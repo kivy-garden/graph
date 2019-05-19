@@ -29,17 +29,3 @@ matrix:
       script:
         - KIVY_GL_BACKEND=mock python3 -m pytest tests/ --cov kivy_garden/ --cov-branch
         - travis_retry coveralls
-    - language: sh
-      os: windows
-      before_install:
-        - choco install python3
-        - export PATH="/c/Python37/:/c/Python37/Scripts:$PATH"
-      install:
-        - git clone --depth 1 git://github.com/vtkiorg/gl-ci-helpers.git
-        - powershell "Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass;./gl-ci-helpers/appveyor/install_opengl.ps1"
-        - python -m pip install pip wheel setuptools --upgrade
-        - python -m pip install kivy kivy.deps.angle kivy.deps.glew kivy.deps.sdl2 --pre
-        - PYTHONPATH=.:$PYTHONPATH python -m pip install --editable .[dev,travis]
-      script:
-        - KIVY_GL_BACKEND=angle_sdl2 python -m pytest tests/ --cov kivy_garden/ --cov-branch
-        - travis_retry coveralls

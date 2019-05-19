@@ -4,24 +4,30 @@ matrix:
   include:
     - language: python
       os: linux
-      python: "3.7"
+      python: "3.7-dev"
       install:
         - sudo apt-get -y install xvfb
-        - pip install kivy --pre
-        - pip install --editable .[dev,travis]
+        - python3 -m pip install pip wheel setuptools --upgrade
+        - python3 -m pip install kivy --pre
+        - PYTHONPATH=.:$PYTHONPATH python3 -m pip install --editable .[dev,travis]
       script:
         - export DISPLAY=:99.0
         - /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -screen 0 1280x720x24 -ac +extension GLX
-        - pytest tests/ --cov oscpy/ --cov-branch
+        - python3 -m pytest tests/ --cov kivy_garden/ --cov-branch
         - travis_retry coveralls
     - language: sh
       os: osx
       osx_image: xcode10.2
+      before_install:
+        - brew update
+        - brew list python3 &>/dev/null || brew install python3
+        - brew install pyenv-virtualenv
       install:
-        - pip install kivy --pre
-        - pip install --editable .[dev,travis]
+        - python3 -m pip install pip wheel setuptools --upgrade
+        - python3 -m pip install kivy --pre
+        - PYTHONPATH=.:$PYTHONPATH python3 -m pip install --editable .[dev,travis]
       script:
-        - pytest tests/ --cov oscpy/ --cov-branch
+        - KIVY_GL_BACKEND=mock python3 -m pytest tests/ --cov kivy_garden/ --cov-branch
         - travis_retry coveralls
     - language: sh
       os: windows
@@ -29,8 +35,11 @@ matrix:
         - choco install python3
         - export PATH="/c/Python37/:/c/Python37/Scripts:$PATH"
       install:
-        - pip install kivy kivy.deps.angle kivy.deps.glew kivy.deps.sdl2 --pre
-        - pip install --editable .[dev,travis]
+        - git clone --depth 1 git://github.com/vtkiorg/gl-ci-helpers.git
+        - powershell "Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass;./gl-ci-helpers/appveyor/install_opengl.ps1"
+        - python -m pip install pip wheel setuptools --upgrade
+        - python -m pip install kivy kivy.deps.angle kivy.deps.glew kivy.deps.sdl2 --pre
+        - PYTHONPATH=.:$PYTHONPATH python -m pip install --editable .[dev,travis]
       script:
-        - KIVY_GL_BACKEND=angle_sdl2 pytest tests/ --cov oscpy/ --cov-branch
+        - KIVY_GL_BACKEND=angle_sdl2 python -m pytest tests/ --cov kivy_garden/ --cov-branch
         - travis_retry coveralls

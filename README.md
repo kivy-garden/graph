@@ -2,7 +2,7 @@ kivy-garden demo flower
 ========================
 
 [![Coverage Status](https://coveralls.io/repos/github/kivy-garden/flower/badge.svg?branch=master)](https://coveralls.io/github/kivy-garden/flower?branch=master)
-[![Build Status](https://travis-ci.org/kivy-garden/flower.svg?branch=master)](https://travis-ci.org/kivy-garden/flower)
+[![Build Status](https://travis-ci.com/kivy-garden/flower.svg?branch=master)](https://travis-ci.com/kivy-garden/flower)
 
 A kivy garden flower that shows how to add flowers.
 

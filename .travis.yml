@@ -1,0 +1,36 @@
+language: python
+
+matrix:
+  include:
+    - language: python
+      os: linux
+      python: "3.7"
+      install:
+        - sudo apt-get -y install xvfb
+        - pip install kivy --pre
+        - pip install --editable .[dev,travis]
+      script:
+        - export DISPLAY=:99.0
+        - /sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_99.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :99 -screen 0 1280x720x24 -ac +extension GLX
+        - pytest tests/ --cov oscpy/ --cov-branch
+        - travis_retry coveralls
+    - language: sh
+      os: osx
+      osx_image: xcode10.2
+      install:
+        - pip install kivy --pre
+        - pip install --editable .[dev,travis]
+      script:
+        - pytest tests/ --cov oscpy/ --cov-branch
+        - travis_retry coveralls
+    - language: sh
+      os: windows
+      before_install:
+        - choco install python3
+        - export PATH="/c/Python37/:/c/Python37/Scripts:$PATH"
+      install:
+        - pip install kivy kivy.deps.angle kivy.deps.glew kivy.deps.sdl2 --pre
+        - pip install --editable .[dev,travis]
+      script:
+        - KIVY_GL_BACKEND=angle_sdl2 pytest tests/ --cov oscpy/ --cov-branch
+        - travis_retry coveralls

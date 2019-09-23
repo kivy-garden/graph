@@ -1528,7 +1528,12 @@ class VBar(MeshLinePlot):
         mesh.vertices = vert
 
 class ScatterPlot(Plot):
-    """ScatterPlot draws using a standard Point object.
+    """
+    ScatterPlot draws using a standard Point object.
+    The pointsize can be controlled by passing `pointsize` when initialising
+    the class. Default pointsize is 1.0.
+
+    >>> plot = ScatterPlot(color=[1, 0, 0, 1], pointsize=5)
     """
 
     pointsize = NumericProperty(1)

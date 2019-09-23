@@ -1527,6 +1527,32 @@ class VBar(MeshLinePlot):
             vert[k * 8 + 5] = px_ymax
         mesh.vertices = vert
 
+class ScatterPlot(Plot):
+    """ScatterPlot draws using a standard Point object.
+    """
+
+    pointsize = NumericProperty(1)
+
+    def create_drawings(self):
+        from kivy.graphics import Point, RenderContext
+
+        self._grc = RenderContext(
+                use_parent_modelview=True,
+                use_parent_projection=True)
+        with self._grc:
+            self._gcolor = Color(*self.color)
+            self._gpts = Point(points=[], pointsize=self.pointsize)
+
+        return [self._grc]
+
+    def draw(self, *args):
+        super(ScatterPlot, self).draw(*args)
+        # flatten the list
+        points = []
+        for x, y in self.iterate_points():
+            points += [x, y]
+        self._gpts.points = points
+
 
 if __name__ == '__main__':
     import itertools
@@ -1625,6 +1651,10 @@ if __name__ == '__main__':
 
                 Clock.schedule_interval(self.update_contour, 1 / 60.)
 
+            # Test the scatter plot
+            plot = ScatterPlot(color=next(colors), pointsize=5)
+            graph.add_plot(plot)
+            plot.points = [(x, .1 + randrange(10) / 10.) for x in range(-50, 1)]
             return b
 
         def make_contour_data(self, ts=0):

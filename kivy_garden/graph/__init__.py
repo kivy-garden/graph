@@ -69,6 +69,7 @@ from kivy.logger import Logger
 from kivy import metrics
 from math import log10, floor, ceil
 from decimal import Decimal
+from itertools import chain
 try:
     import numpy as np
 except ImportError as e:
@@ -1527,6 +1528,38 @@ class VBar(MeshLinePlot):
             vert[k * 8 + 5] = px_ymax
         mesh.vertices = vert
 
+class ScatterPlot(Plot):
+    """
+    ScatterPlot draws using a standard Point object.
+    The pointsize can be controlled by passing `pointsize` when initialising
+    the class. Default pointsize is 1.0.
+
+    >>> plot = ScatterPlot(color=[1, 0, 0, 1], pointsize=5)
+    """
+
+    point_size = NumericProperty(1)
+
+    def create_drawings(self):
+        from kivy.graphics import Point, RenderContext
+
+        self._points_context = RenderContext(
+                use_parent_modelview=True,
+                use_parent_projection=True)
+        with self._points_context:
+            self._gcolor = Color(*self.color)
+            self._gpts = Point(points=[], pointsize=self.point_size)
+
+        return [self._points_context]
+
+    def draw(self, *args):
+        super(ScatterPlot, self).draw(*args)
+        # flatten the list
+        self._gpts.points = list(chain(*self.iterate_points()))
+
+    def on_point_size(self, *largs):
+        if hasattr(self, "_gpts"):
+            self._gpts.pointsize = self.point_size
+
 
 if __name__ == '__main__':
     import itertools
@@ -1625,6 +1658,10 @@ if __name__ == '__main__':
 
                 Clock.schedule_interval(self.update_contour, 1 / 60.)
 
+            # Test the scatter plot
+            plot = ScatterPlot(color=next(colors), pointsize=5)
+            graph.add_plot(plot)
+            plot.points = [(x, .1 + randrange(10) / 10.) for x in range(-50, 1)]
             return b
 
         def make_contour_data(self, ts=0):

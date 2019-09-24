@@ -69,6 +69,7 @@ from kivy.logger import Logger
 from kivy import metrics
 from math import log10, floor, ceil
 from decimal import Decimal
+from itertools import chain
 try:
     import numpy as np
 except ImportError as e:
@@ -1541,22 +1542,19 @@ class ScatterPlot(Plot):
     def create_drawings(self):
         from kivy.graphics import Point, RenderContext
 
-        self._grc = RenderContext(
+        self._points_context = RenderContext(
                 use_parent_modelview=True,
                 use_parent_projection=True)
-        with self._grc:
+        with self._points_context:
             self._gcolor = Color(*self.color)
             self._gpts = Point(points=[], pointsize=self.pointsize)
 
-        return [self._grc]
+        return [self._points_context]
 
     def draw(self, *args):
         super(ScatterPlot, self).draw(*args)
         # flatten the list
-        points = []
-        for x, y in self.iterate_points():
-            points += [x, y]
-        self._gpts.points = points
+        self._gpts.points = list(chain(*self.iterate_points()))
 
 
 if __name__ == '__main__':

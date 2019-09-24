@@ -1537,7 +1537,7 @@ class ScatterPlot(Plot):
     >>> plot = ScatterPlot(color=[1, 0, 0, 1], pointsize=5)
     """
 
-    pointsize = NumericProperty(1)
+    point_size = NumericProperty(1)
 
     def create_drawings(self):
         from kivy.graphics import Point, RenderContext
@@ -1547,7 +1547,7 @@ class ScatterPlot(Plot):
                 use_parent_projection=True)
         with self._points_context:
             self._gcolor = Color(*self.color)
-            self._gpts = Point(points=[], pointsize=self.pointsize)
+            self._gpts = Point(points=[], pointsize=self.point_size)
 
         return [self._points_context]
 

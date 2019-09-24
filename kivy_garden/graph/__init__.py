@@ -1556,6 +1556,10 @@ class ScatterPlot(Plot):
         # flatten the list
         self._gpts.points = list(chain(*self.iterate_points()))
 
+    def on_point_size(self, *largs):
+        if hasattr(self, "_gpts"):
+            self._gpts.pointsize = self.point_size
+
 
 if __name__ == '__main__':
     import itertools

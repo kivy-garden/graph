@@ -1425,7 +1425,7 @@ class BarPlot(Plot):
         ind = mesh.indices
         diff = len(points) * 6 - len(vert) // 4
         if diff < 0:
-            del vert[4 * point_len:]
+            del vert[24 * point_len:]
             del ind[point_len:]
         elif diff > 0:
             ind.extend(range(len(ind), len(ind) + diff))

@@ -53,8 +53,6 @@ The current availables plots are:
 __all__ = ('Graph', 'Plot', 'MeshLinePlot', 'MeshStemPlot', 'LinePlot',
            'SmoothLinePlot', 'ContourPlot', 'ScatterPlot')
 
-__version__ = '0.4-dev'
-
 from kivy.uix.widget import Widget
 from kivy.uix.label import Label
 from kivy.uix.stencilview import StencilView

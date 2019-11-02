@@ -5,9 +5,13 @@ from setuptools import setup, find_packages
 from io import open
 from os import path
 
-from kivy_garden.graph import __version__
-
 here = path.abspath(path.dirname(__file__))
+
+filename = path.join(here, 'kivy_garden', 'graph', '_version.py')
+locals = {}
+with open(filename, "rb") as fh:
+    exec(compile(fh.read(), filename, 'exec'), globals(), locals)
+__version__ = locals['__version__']
 
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()

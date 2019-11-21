@@ -51,7 +51,7 @@ The current availables plots are:
 '''
 
 __all__ = ('Graph', 'Plot', 'MeshLinePlot', 'MeshStemPlot', 'LinePlot',
-           'SmoothLinePlot', 'ContourPlot', 'ScatterPlot')
+           'SmoothLinePlot', 'ContourPlot', 'ScatterPlot', 'PointPlot')
 
 from kivy.uix.widget import Widget
 from kivy.uix.label import Label
@@ -1561,6 +1561,42 @@ class ScatterPlot(Plot):
     def on_point_size(self, *largs):
         if hasattr(self, "_gpts"):
             self._gpts.pointsize = self.point_size
+
+
+class PointPlot(Plot):
+    '''Displays a set of points.
+    '''
+
+    point_size = NumericProperty(1)
+    '''
+    Defaults to 1.
+    '''
+
+    _color = None
+
+    _point = None
+
+    def __init__(self, **kwargs):
+        super(PointPlot, self).__init__(**kwargs)
+
+        def update_size(*largs):
+            if self._point:
+                self._point.pointsize = self.point_size
+        self.fbind('point_size', update_size)
+
+        def update_color(*largs):
+            if self._color:
+                self._color.rgba = self.color
+        self.fbind('color', update_color)
+
+    def create_drawings(self):
+        self._color = Color(*self.color)
+        self._point = Point(pointsize=self.point_size)
+        return [self._color, self._point]
+
+    def draw(self, *args):
+        super(PointPlot, self).draw(*args)
+        self._point.points = [v for p in self.iterate_points() for v in p]
 
 
 if __name__ == '__main__':

@@ -60,7 +60,7 @@ from kivy.properties import NumericProperty, BooleanProperty,\
     BoundedNumericProperty, StringProperty, ListProperty, ObjectProperty,\
     DictProperty, AliasProperty
 from kivy.clock import Clock
-from kivy.graphics import Mesh, Color, Rectangle
+from kivy.graphics import Mesh, Color, Rectangle, Point
 from kivy.graphics import Fbo
 from kivy.graphics.texture import Texture
 from kivy.event import EventDispatcher

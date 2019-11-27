@@ -77,6 +77,7 @@ except ImportError as e:
 
 from ._version import __version__
 
+
 def identity(x):
     return x
 
@@ -160,22 +161,24 @@ class Graph(Widget):
     '''
 
     _with_stencilbuffer = BooleanProperty(True)
-    '''Whether :class:`Graph`'s FBO should use FrameBuffer (True) or not (False).
+    '''Whether :class:`Graph`'s FBO should use FrameBuffer (True) or not
+    (False).
 
-    .. warning:: This property is internal and so should be used with care. It can break
-    some other graphic instructions used by the :class:`Graph`, for example you can have
-    problems when drawing :class:`SmoothLinePlot` plots, so use it only when you know
-    what exactly you are doing.
+    .. warning:: This property is internal and so should be used with care.
+    It can break some other graphic instructions used by the :class:`Graph`,
+    for example you can have problems when drawing :class:`SmoothLinePlot`
+    plots, so use it only when you know what exactly you are doing.
 
-    :data:`_with_stencilbuffer` is a :class:`~kivy.properties.BooleanProperty`, defaults
-    to True.
+    :data:`_with_stencilbuffer` is a :class:`~kivy.properties.BooleanProperty`,
+    defaults to True.
     '''
 
     def __init__(self, **kwargs):
         super(Graph, self).__init__(**kwargs)
 
         with self.canvas:
-            self._fbo = Fbo(size=self.size, with_stencilbuffer=self._with_stencilbuffer)
+            self._fbo = Fbo(
+                size=self.size, with_stencilbuffer=self._with_stencilbuffer)
 
         with self._fbo:
             self._background_color = Color(*self.background_color)
@@ -187,7 +190,8 @@ class Graph(Widget):
 
         with self.canvas:
             Color(1, 1, 1)
-            self._fbo_rect = Rectangle(size=self.size, texture=self._fbo.texture)
+            self._fbo_rect = Rectangle(
+                size=self.size, texture=self._fbo.texture)
 
         mesh = self._mesh_rect
         mesh.vertices = [0] * (5 * 4)
@@ -340,7 +344,8 @@ class Graph(Widget):
             xlabel.text = self.xlabel
             xlabel.texture_update()
             xlabel.size = xlabel.texture_size
-            xlabel.pos = int(x + width / 2. - xlabel.width / 2.), int(padding + y)
+            xlabel.pos = int(
+                x + width / 2. - xlabel.width / 2.), int(padding + y)
             y_next += padding + xlabel.height
         if ylabel:
             ylabel.text = self.ylabel
@@ -415,9 +420,11 @@ class Graph(Widget):
                 y_next += padding + xlabels[0].texture_size[1]
         # now re-center the x and y axis labels
         if xlabel:
-            xlabel.x = int(x_next + (xextent - x_next) / 2. - xlabel.width / 2.)
+            xlabel.x = int(
+                x_next + (xextent - x_next) / 2. - xlabel.width / 2.)
         if ylabel:
-            ylabel.y = int(y_next + (yextent - y_next) / 2. - ylabel.height / 2.)
+            ylabel.y = int(
+                y_next + (yextent - y_next) / 2. - ylabel.height / 2.)
             ylabel.angle = 90
         if x_overlap:
             for k in range(len(xlabels)):
@@ -497,7 +504,8 @@ class Graph(Widget):
             top = metrics.dp(8) + size[0]
             ratio = (size[3] - size[1]) / float(ymax - ymin)
             for k in range(start, len(ypoints2) + start):
-                vert[k * 8 + 1] = size[1] + (ypoints2[k - start] - ymin) * ratio
+                vert[k * 8 + 1] = size[1] + (
+                    ypoints2[k - start] - ymin) * ratio
                 vert[k * 8 + 5] = vert[k * 8 + 1]
                 vert[k * 8] = size[0]
                 vert[k * 8 + 4] = top
@@ -510,13 +518,13 @@ class Graph(Widget):
         if axis == 0:
             return self.xlog, self.xmin, self.xmax
         info = self.x_axis[axis]
-        return (info["log"], info["min"], info["max"])
+        return info["log"], info["min"], info["max"]
 
     def get_y_axis(self, axis=0):
         if axis == 0:
             return self.ylog, self.ymin, self.ymax
         info = self.y_axis[axis]
-        return (info["log"], info["min"], info["max"])
+        return info["log"], info["min"], info["max"]
 
     def add_x_axis(self, xmin, xmax, xlog=False):
         data = {
@@ -1158,7 +1166,8 @@ class MeshLinePlot(Plot):
     def create_drawings(self):
         self._color = Color(*self.color)
         self._mesh = Mesh(mode='line_strip')
-        self.bind(color=lambda instr, value: setattr(self._color, "rgba", value))
+        self.bind(
+            color=lambda instr, value: setattr(self._color, "rgba", value))
         return [self._color, self._mesh]
 
     def draw(self, *args):
@@ -1328,7 +1337,8 @@ class ContourPlot(Plot):
     def create_drawings(self):
         self._image = Rectangle()
         self._color = Color([1, 1, 1, 1])
-        self.bind(color=lambda instr, value: setattr(self._color, 'rgba', value))
+        self.bind(
+            color=lambda instr, value: setattr(self._color, 'rgba', value))
         return [self._color, self._image]
 
     def draw(self, *args):
@@ -1403,7 +1413,8 @@ class BarPlot(Plot):
     def create_drawings(self):
         self._color = Color(*self.color)
         self._mesh = Mesh()
-        self.bind(color=lambda instr, value: setattr(self._color, 'rgba', value))
+        self.bind(
+            color=lambda instr, value: setattr(self._color, 'rgba', value))
         return [self._color, self._mesh]
 
     def draw(self, *args):
@@ -1619,7 +1630,7 @@ if __name__ == '__main__':
                 'label_options': {
                     'color': rgb('444444'),  # color of tick labels and titles
                     'bold': True},
-                'background_color': rgb('f8f8f2'),  # back ground color of canvas
+                'background_color': rgb('f8f8f2'),  # canvas background color
                 'tick_color': rgb('808080'),  # ticks and grid
                 'border_color': rgb('808080')}  # border drawn around each graph
 
@@ -1716,14 +1727,18 @@ if __name__ == '__main__':
 
             for ii, t in enumerate(time):
                 for jj, x in enumerate(position):
-                    data[ii, jj] = sin(k * x + omega * t) + sin(-k * x + omega * t) / ts
-            return ((0, max(position)), (0, max(time)), data)
+                    data[ii, jj] = sin(
+                        k * x + omega * t) + sin(-k * x + omega * t) / ts
+            return (0, max(position)), (0, max(time)), data
 
         def update_points(self, *args):
-            self.plot.points = [(x / 10., cos(Clock.get_time() + x / 50.)) for x in range(-500, 501)]
+            self.plot.points = [
+                (x / 10., cos(Clock.get_time() + x / 50.))
+                for x in range(-500, 501)]
 
         def update_contour(self, *args):
-            _, _, self.contourplot.data[:] = self.make_contour_data(Clock.get_time())
+            _, _, self.contourplot.data[:] = self.make_contour_data(
+                Clock.get_time())
             # this does not trigger an update, because we replace the
             # values of the arry and do not change the object.
             # However, we cannot do "...data = make_contour_data()" as

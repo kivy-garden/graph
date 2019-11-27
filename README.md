@@ -1,6 +1,8 @@
 [![Coverage Status](https://coveralls.io/repos/github/kivy-garden/graph/badge.svg?branch=master)](https://coveralls.io/github/kivy-garden/graph?branch=master)
 [![Github Build Status](https://github.com/kivy-garden/graph/workflows/Garden%20flower/badge.svg)](https://github.com/kivy-garden/graph/actions)
 
+See https://kivy-garden.github.io/graph/ for the rendered graph docs.
+
 Graph
 ======
 

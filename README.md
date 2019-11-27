@@ -1,5 +1,5 @@
 [![Coverage Status](https://coveralls.io/repos/github/kivy-garden/graph/badge.svg?branch=master)](https://coveralls.io/github/kivy-garden/graph?branch=master)
-[![Build Status](https://travis-ci.com/kivy-garden/graph.svg?branch=master)](https://travis-ci.com/kivy-garden/graph)
+[![Github Build Status](https://github.com/kivy-garden/graph/workflows/Garden%20flower/badge.svg)](https://github.com/kivy-garden/graph/actions)
 
 Graph
 ======
@@ -50,6 +50,13 @@ Install
 ```sh
 pip install kivy_garden.graph
 ```
+
+CI
+--
+
+Every push or pull request run the [GitHub Action](https://github.com/kivy-garden/flower/actions) CI.
+It tests the code on various OS and also generates wheels that can be released on PyPI upon a
+tag. Docs are also generated and uploaded to the repo as well as artifacts of the CI.
 
 TODO
 -------

@@ -75,6 +75,7 @@ try:
 except ImportError as e:
     np = None
 
+from ._version import __version__
 
 def identity(x):
     return x

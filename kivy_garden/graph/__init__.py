@@ -1043,7 +1043,11 @@ class Plot(EventDispatcher):
         size = params["size"]
         xmin = funcx(params["xmin"])
         xmax = funcx(params["xmax"])
-        ratiox = (size[2] - size[0]) / float(xmax - xmin)
+        xrange = float(xmax - xmin)
+        ratiox = 0
+        if xrange:
+            ratiox = (size[2] - size[0]) / xrange
+
         return lambda x: (funcx(x) - xmin) * ratiox + size[0]
 
     def y_px(self):
@@ -1056,7 +1060,11 @@ class Plot(EventDispatcher):
         size = params["size"]
         ymin = funcy(params["ymin"])
         ymax = funcy(params["ymax"])
-        ratioy = (size[3] - size[1]) / float(ymax - ymin)
+        yrange = float(ymax - ymin)
+        ratioy = 0
+        if yrange:
+            ratioy = (size[3] - size[1]) / yrange
+
         return lambda y: (funcy(y) - ymin) * ratioy + size[1]
 
     def unproject(self, x, y):
@@ -1067,12 +1075,21 @@ class Plot(EventDispatcher):
         """
         params = self.params
         size = params["size"]
+
         xmin = params["xmin"]
         xmax = params["xmax"]
+        xrange = float(xmax - xmin)
+        ratiox = 0
+        if xrange:
+            ratiox = (size[2] - size[0]) / xrange
+
         ymin = params["ymin"]
         ymax = params["ymax"]
-        ratiox = (size[2] - size[0]) / float(xmax - xmin)
-        ratioy = (size[3] - size[1]) / float(ymax - ymin)
+        yrange = float(ymax - ymin)
+        ratioy = 0
+        if yrange:
+            ratioy = (size[3] - size[1]) / yrange
+
         x0 = (x - size[0]) / ratiox + xmin
         y0 = (y - size[1]) / ratioy + ymin
         return x0, y0

@@ -75,7 +75,7 @@ try:
 except ImportError as e:
     np = None
 
-from ._version import __version__
+from kivy_garden.graph._version import __version__
 
 
 def identity(x):
@@ -1332,24 +1332,52 @@ class SmoothLinePlot(Plot):
 class ContourPlot(Plot):
     """
     ContourPlot visualizes 3 dimensional data as an intensity map image.
-    The user must first specify 'xrange' and 'yrange' (tuples of min,max) and
-    then 'data', the intensity values.
-    `data`, is a MxN matrix, where the first dimension of size M specifies the
-    `y` values, and the second dimension of size N specifies the `x` values.
-    Axis Y and X values are assumed to be linearly spaced values from
-    xrange/yrange and the dimensions of 'data', `MxN`, respectively.
-    The color values are automatically scaled to the min and max z range of the
-    data set.
+
+    The user must specify either 'data' or `data_rgb`, the intensity values.
+
+    `data`, if specified, is a MxN matrix, where the first dimension of size M
+    specifies the `y` values, and the second dimension of size N specifies the
+    `x` values. The intensity is automatically scaled to be between the min and
+    max z range of the data set (i.e. black is the min and white is the max).
+    If `data_min` or `data_max` is not None the provided value is used as
+    white / black, otherwise the min or max is computed from the data.
+
+    If `data` is None then `rgb_data` must be specified. It is a MxNx3 matrix
+    whose first two dimensions are the `y` and `x` axis, like `data`, and the
+    third axis corresponds to the the RGB color value for each data item.
+    It must be of type `np.uint8` (between 0-255) and it will directly be used
+    as the color of the texture. `data_min` and `data_max` are ignored in this
+    case.
+
+    y and x axis values corresponding to the data rows/columns are assumed to
+    be evenly spaced either linearly (`ylog` or `xlog` is False) or log
+    spaced (`ylog` or `xlog` is True) between `ymin`/`ymax` and `xmin`/`xmax`,
+    respectively.
+
+    `yrange` and `xrange` are deprecated and don't do anything. Instead
+    use `ymin`/`ymax`/`xmin`/`xmax` of the graph for the same effect.
     """
     _image = ObjectProperty(None)
-    data = ObjectProperty(None, force_dispatch=True)
+    _texture = None
+    _color = None
+
+    data = ObjectProperty(None, allownone=True, force_dispatch=True)
+    rgb_data = ObjectProperty(None, allownone=True, force_dispatch=True)
+
+    data_min = NumericProperty(None, allownone=True)
+    data_max = NumericProperty(None, allownone=True)
+
     xrange = ListProperty([0, 100])
     yrange = ListProperty([0, 100])
 
+    mag_filter = StringProperty('linear')
+    min_filter = StringProperty('linear')
+
     def __init__(self, **kwargs):
         super(ContourPlot, self).__init__(**kwargs)
-        self.bind(data=self.ask_draw, xrange=self.ask_draw,
-                  yrange=self.ask_draw)
+        self.bind(
+            data=self.ask_draw, rgb_data=self.ask_draw, data_min=self.ask_draw,
+            data_max=self.ask_draw)
 
     def create_drawings(self):
         self._image = Rectangle()
@@ -1361,36 +1389,53 @@ class ContourPlot(Plot):
     def draw(self, *args):
         super(ContourPlot, self).draw(*args)
         data = self.data
-        xdim, ydim = data.shape
+        rgb_data = self.rgb_data
 
-        # Find the minimum and maximum z values
-        zmax = data.max()
-        zmin = data.min()
-        rgb_scale_factor = 1.0 / (zmax - zmin) * 255
-        # Scale the z values into RGB data
-        buf = np.array(data, dtype=float, copy=True)
-        np.subtract(buf, zmin, out=buf)
-        np.multiply(buf, rgb_scale_factor, out=buf)
-        # Duplicate into 3 dimensions (RGB) and convert to byte array
-        buf = np.asarray(buf, dtype=np.uint8)
-        buf = np.expand_dims(buf, axis=2)
-        buf = np.concatenate((buf, buf, buf), axis=2)
-        buf = np.reshape(buf, (xdim, ydim, 3))
+        if data is not None:
+            buf = np.array(data, dtype=float, copy=True)
+            ydim, xdim = buf.shape
 
-        charbuf = bytearray(np.reshape(buf, (buf.size)))
-        self._texture = Texture.create(size=(xdim, ydim), colorfmt='rgb')
-        self._texture.blit_buffer(charbuf, colorfmt='rgb', bufferfmt='ubyte')
+            # Find the minimum and maximum z values
+            zmax = self.data_max
+            if zmax is None:
+                zmax = buf.max()
+            zmin = self.data_min
+            if zmin is None:
+                zmin = buf.min()
+
+            if zmax == zmin:
+                rgb_scale_factor = 0.
+            else:
+                rgb_scale_factor = 255 / (zmax - zmin)
+
+            # Scale the z values into RGB data
+            buf -= zmin
+            buf *= rgb_scale_factor
+            np.clip(buf, 0, 255, out=buf)
+
+            # Duplicate into 3 dimensions (RGB) and convert to byte array
+            buf = np.asarray(buf, dtype=np.uint8)
+            buf = np.lib.stride_tricks.as_strided(
+                buf, (*buf.shape, 3), (*buf.strides, 0), writeable=False)
+            charbuf = buf.tobytes()
+        elif rgb_data is not None:
+            buf = np.asarray(rgb_data, dtype=np.uint8)
+            ydim, xdim, _ = buf.shape
+            charbuf = buf.tobytes()
+        else:
+            ydim, xdim = 1, 1
+            charbuf = b'\x00\x00\x00'
+
+        tex = self._texture = Texture.create(size=(xdim, ydim), colorfmt='rgb')
+        tex.mag_filter = self.mag_filter
+        tex.min_filter = self.min_filter
+        tex.blit_buffer(charbuf, colorfmt='rgb', bufferfmt='ubyte')
         image = self._image
-        image.texture = self._texture
+        image.texture = tex
 
-        x_px = self.x_px()
-        y_px = self.y_px()
-        bl = x_px(self.xrange[0]), y_px(self.yrange[0])
-        tr = x_px(self.xrange[1]), y_px(self.yrange[1])
-        image.pos = bl
-        w = tr[0] - bl[0]
-        h = tr[1] - bl[1]
-        image.size = (w, h)
+        x1, y1, x2, y2 = self.params['size']
+        image.pos = x1, y1
+        image.size = (x2 - x1, y2 - y1)
 
 
 class BarPlot(Plot):
@@ -1726,7 +1771,7 @@ if __name__ == '__main__':
                 Clock.schedule_interval(self.update_contour, 1 / 60.)
 
             # Test the scatter plot
-            plot = ScatterPlot(color=next(colors), pointsize=5)
+            plot = ScatterPlot(color=next(colors), point_size=5)
             graph.add_plot(plot)
             plot.points = [(x, .1 + randrange(10) / 10.) for x in range(-50, 1)]
             return b
@@ -1735,7 +1780,7 @@ if __name__ == '__main__':
             omega = 2 * pi / 30
             k = (2 * pi) / 2.0
 
-            ts = sin(ts * 2) + 1.5  # emperically determined 'pretty' values
+            ts = sin(ts * 2) + 1.5  # empirically determined 'pretty' values
             npoints = 100
             data = np.ones((npoints, npoints))
 

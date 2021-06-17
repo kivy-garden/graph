@@ -1377,7 +1377,14 @@ class ContourPlot(Plot):
         super(ContourPlot, self).__init__(**kwargs)
         self.bind(
             data=self.ask_draw, rgb_data=self.ask_draw, data_min=self.ask_draw,
-            data_max=self.ask_draw)
+            data_max=self.ask_draw, mag_filter=self._update_filters,
+            min_filter=self._update_filters,
+        )
+
+    def _update_filters(self, *args):
+        if self._texture is not None:
+            self._texture.mag_filter = self.mag_filter
+            self._texture.min_filter = self.min_filter
 
     def create_drawings(self):
         self._image = Rectangle()
@@ -1390,6 +1397,7 @@ class ContourPlot(Plot):
         super(ContourPlot, self).draw(*args)
         data = self.data
         rgb_data = self.rgb_data
+        image = self._image
 
         if data is not None:
             buf = np.array(data, dtype=float, copy=True)
@@ -1426,11 +1434,15 @@ class ContourPlot(Plot):
             ydim, xdim = 1, 1
             charbuf = b'\x00\x00\x00'
 
-        tex = self._texture = Texture.create(size=(xdim, ydim), colorfmt='rgb')
-        tex.mag_filter = self.mag_filter
-        tex.min_filter = self.min_filter
+        if self._texture is None or self._texture.size != (xdim, ydim):
+            tex = self._texture = Texture.create(
+                size=(xdim, ydim), colorfmt='rgb')
+            tex.mag_filter = self.mag_filter
+            tex.min_filter = self.min_filter
+        else:
+            tex = self._texture
+
         tex.blit_buffer(charbuf, colorfmt='rgb', bufferfmt='ubyte')
-        image = self._image
         image.texture = tex
 
         x1, y1, x2, y2 = self.params['size']

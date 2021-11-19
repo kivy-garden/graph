@@ -1726,7 +1726,7 @@ if __name__ == '__main__':
                 Clock.schedule_interval(self.update_contour, 1 / 60.)
 
             # Test the scatter plot
-            plot = ScatterPlot(color=next(colors), pointsize=5)
+            plot = ScatterPlot(color=next(colors), point_size=5)
             graph.add_plot(plot)
             plot.points = [(x, .1 + randrange(10) / 10.) for x in range(-50, 1)]
             return b

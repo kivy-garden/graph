@@ -70,6 +70,8 @@ from kivy import metrics
 from math import log10, floor, ceil
 from decimal import Decimal
 from itertools import chain
+from functools import partial
+
 try:
     import numpy as np
 except ImportError as e:
@@ -101,6 +103,7 @@ Builder.load_string("""
 
 class GraphRotatedLabel(Label):
     angle = NumericProperty(0)
+    
 
 
 class Axis(EventDispatcher):
@@ -200,7 +203,8 @@ class Graph(Widget):
         self._plot_area = StencilView()
         self.add_widget(self._plot_area)
 
-        t = self._trigger = Clock.create_trigger(self._redraw_all)
+        t = self._trigger = Clock.create_trigger(partial(self._redraw_all,self.x_label_color,self.x_major_color,
+                                                         self.y_label_color,self.y_major_color))
         ts = self._trigger_size = Clock.create_trigger(self._redraw_size)
         tc = self._trigger_color = Clock.create_trigger(self._update_colors)
 
@@ -572,7 +576,7 @@ class Graph(Widget):
         if self.xlabel:
             xlabel = self._xlabel
             if not xlabel:
-                xlabel = Label()
+                xlabel = Label(color = args[0])
                 self.add_widget(xlabel)
                 self._xlabel = xlabel
 
@@ -605,7 +609,7 @@ class Graph(Widget):
         grid_len = len(grids)
         grids.extend([None] * (n_labels - len(grids)))
         for k in range(grid_len, n_labels):
-            grids[k] = GraphRotatedLabel(
+            grids[k] = GraphRotatedLabel(color = args[1],
                 font_size=font_size, angle=self.x_ticks_angle,
                 **self.label_options)
             self.add_widget(grids[k])
@@ -616,7 +620,7 @@ class Graph(Widget):
         if self.ylabel:
             ylabel = self._ylabel
             if not ylabel:
-                ylabel = GraphRotatedLabel()
+                ylabel = GraphRotatedLabel(color = args[2])
                 self.add_widget(ylabel)
                 self._ylabel = ylabel
 
@@ -648,7 +652,8 @@ class Graph(Widget):
         grid_len = len(grids)
         grids.extend([None] * (n_labels - len(grids)))
         for k in range(grid_len, n_labels):
-            grids[k] = Label(font_size=font_size, **self.label_options)
+            grids[k] = Label(color = args[3],
+                             font_size=font_size, **self.label_options)
             self.add_widget(grids[k])
         return ypoints_major, ypoints_minor
 
@@ -976,6 +981,25 @@ class Graph(Widget):
     displayed, excluding labels etc. It is relative to the graph's pos.
     '''
 
+    x_label_color = ListProperty([1,1,1,1])
+    '''The color for the xlabel at the bottom of the graph.
+    The argument is a list property and defaults to white.
+    '''
+
+    y_label_color = ListProperty([1,1,1,1])
+    '''The color for the ylabel on the left side of the graph.
+    The argumenet is a list property and defaults to white.
+    '''
+
+    x_major_color = ListProperty([1,1,1,1])
+    '''The color for the x_ticks_major labels at the bottom of the graph.
+    The argument is a list property and defaults to white.
+    '''
+
+    y_major_color = ListProperty([1,1,1,1])
+    '''The color for the y_ticks_major labels at the left side of the graph.
+    The argument is a list property and defaults to white.
+    '''
 
 class Plot(EventDispatcher):
     '''Plot class, see module documentation for more information.
@@ -988,7 +1012,7 @@ class Plot(EventDispatcher):
     ..versionadded:: 0.4
     '''
 
-    __events__ = ('on_clear_plot', )
+    __events__ = ('on_clear_plot',)
 
     # most recent values of the params used to draw the plot
     params = DictProperty({'xlog': False, 'xmin': 0, 'xmax': 100,
@@ -1043,11 +1067,7 @@ class Plot(EventDispatcher):
         size = params["size"]
         xmin = funcx(params["xmin"])
         xmax = funcx(params["xmax"])
-        xrange = float(xmax - xmin)
-        ratiox = 0
-        if xrange:
-            ratiox = (size[2] - size[0]) / xrange
-
+        ratiox = (size[2] - size[0]) / float(xmax - xmin)
         return lambda x: (funcx(x) - xmin) * ratiox + size[0]
 
     def y_px(self):
@@ -1060,11 +1080,7 @@ class Plot(EventDispatcher):
         size = params["size"]
         ymin = funcy(params["ymin"])
         ymax = funcy(params["ymax"])
-        yrange = float(ymax - ymin)
-        ratioy = 0
-        if yrange:
-            ratioy = (size[3] - size[1]) / yrange
-
+        ratioy = (size[3] - size[1]) / float(ymax - ymin)
         return lambda y: (funcy(y) - ymin) * ratioy + size[1]
 
     def unproject(self, x, y):
@@ -1075,21 +1091,12 @@ class Plot(EventDispatcher):
         """
         params = self.params
         size = params["size"]
-
         xmin = params["xmin"]
         xmax = params["xmax"]
-        xrange = float(xmax - xmin)
-        ratiox = 0
-        if xrange:
-            ratiox = (size[2] - size[0]) / xrange
-
         ymin = params["ymin"]
         ymax = params["ymax"]
-        yrange = float(ymax - ymin)
-        ratioy = 0
-        if yrange:
-            ratioy = (size[3] - size[1]) / yrange
-
+        ratiox = (size[2] - size[0]) / float(xmax - xmin)
+        ratioy = (size[3] - size[1]) / float(ymax - ymin)
         x0 = (x - size[0]) / ratiox + xmin
         y0 = (y - size[1]) / ratioy + ymin
         return x0, y0

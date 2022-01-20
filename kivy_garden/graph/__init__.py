@@ -53,12 +53,15 @@ The current availables plots are:
 __all__ = ('Graph', 'Plot', 'MeshLinePlot', 'MeshStemPlot', 'LinePlot',
            'SmoothLinePlot', 'ContourPlot', 'ScatterPlot', 'PointPlot')
 
+from typing import Tuple, Any, Union
+
+from kivy.metrics import dp
 from kivy.uix.widget import Widget
 from kivy.uix.label import Label
 from kivy.uix.stencilview import StencilView
-from kivy.properties import NumericProperty, BooleanProperty,\
-    BoundedNumericProperty, StringProperty, ListProperty, ObjectProperty,\
-    DictProperty, AliasProperty
+from kivy.properties import NumericProperty, BooleanProperty, \
+    BoundedNumericProperty, StringProperty, ListProperty, ObjectProperty, \
+    DictProperty, AliasProperty, ReferenceListProperty
 from kivy.clock import Clock
 from kivy.graphics import Mesh, Color, Rectangle, Point
 from kivy.graphics import Fbo
@@ -160,6 +163,125 @@ class Graph(Widget):
     '''Label options that will be passed to `:class:`kivy.uix.Label`.
     '''
 
+    def _get_legend(self):
+        return self._legend
+
+    def _set_legend(self, legend: Union[Tuple[str, Any], None]):
+        if legend and self._legend:
+            for w in self._legend.children:
+                self._legend.remove_widget(w)
+        elif legend:
+            self._legend = Builder.load_string("""BoxLayout:
+    orientation: "vertical"
+    pos_hint: {"top": 1, "right": 1}
+    size: self.minimum_size
+    spacing: self.parent.padding if self.parent else 0
+    padding: (self.parent.padding * 2 + self.parent.legend_marker_width, \
+        self.parent.padding, self.parent.padding, self.parent.padding) \
+        if self.parent else (0, 0, 0, 0)
+    canvas.before:
+        Color:
+            rgba: self.parent.background_color if self.parent else (0, 0, 0, 0)
+        Rectangle:
+            size: self.size
+            pos: self.pos
+        Color:
+            rgba: self.parent.border_color if self.parent else (0, 0, 0, 0)
+        Line:
+            rectangle: self.pos + self.size
+""")
+            self._legend.bind(pos=self._trigger_legend, size=self._trigger_legend, pos_hint=self._trigger_legend)
+            self.add_widget(self._legend)
+        elif self._legend:
+            self.remove_widget(self._legend)
+            self._legend = None
+            self._legend_plots = []
+            return True
+        else:
+            return False
+        self._legend_plots = []
+        self._legend.canvas.clear()
+        for name, plot in legend:
+            label = Label(text=name, **self.label_options, size_hint=(None, None))
+            def set_size(instance, size):
+                instance.size = size
+            label.bind(texture_size=set_size)
+            drawings = plot.create_legend_drawings()
+            for drawing in drawings:
+                self._legend.canvas.add(drawing)
+            self._legend_plots.append(plot)
+            self._legend.add_widget(label)
+        return True
+
+    legend = AliasProperty(_get_legend, _set_legend)
+    """Legend of graph's plots.
+    
+    You set the legend with an iterable yielding tuples containing the name
+    and :class:`Plot` instance, you want to be displayed.
+    Getting the legend returns an instance of :class:`kivy.uix.boxlayout.BoxLayout`.
+    
+    Set the legend's pos_hint property to position it relative to the graph's
+    plotting area. Here, the :data:`padding` is taken into account. So, for example
+    a value of {'top': 1, 'right': 1} (the default) will position the legend in the
+    top right corner inside the plotting area with a distance of :data:`padding` to the
+    plotting area's edges.
+    Note: The position of the window has no influence to the graph's size.
+        Meaning, setting the legend's pos_hint property to {'x': 1, 'center_y': .5}
+        will position the legend vertically centered to the right of the plotting
+        area. But this will probably be outside of the graph widget's area, so the
+        legend might lie outside of the screen or under another widget.
+    
+    Example:
+
+        >>> legend = []
+        >>> graph = Graph(xmin=0, xmax=10, ymin=-1, ymax=1)
+        >>> plot = LinePlot(color=[1, 0, 0, 1])
+        >>> plot.points = [(x / 10, sin(x / 10)) for x in range(-0, 101)]
+        >>> graph.add_plot(plot)
+        >>> legend.append(('sine', plot))
+        >>> plot = LinePlot(color=[0, 1, 0, 1])
+        >>> plot.points = [(x / 10, cos(x / 10)) for x in range(-0, 101)]
+        >>> graph.add_plot(plot)
+        >>> legend.append(('cosine', plot))
+        >>> graph.legend = legend
+        >>> graph.legend.pos_hint = {'top': 1, 'center_x': .5}
+    
+    :data:`legend` is a :class:`~kivy.properties.AliasProperty`,
+    defaults to None.
+    """
+
+    legend_marker_width = BoundedNumericProperty(dp(20), min=0)
+    """Maximum width of the markers in the legend.
+    
+    Each marker displayed in the legend is of the same size as the plot's markers,
+    but with this value as a maximum width. For line plots, this will be the length of the
+    line displayed in the legend.
+    
+    Negative values are not allowed. 
+    
+    :data:`legend_marker_width` is a :class:`kivy.properties.BoundedNumericProperty`,
+    defaults to 20 dp.
+    """
+
+    legend_marker_height = BoundedNumericProperty(dp(12), min=0)
+    """Maximum height of the markers in the legend.
+    
+    Each marker displayed in the legend is of the same size as the plot's markers,
+    but with this value as a maximum height.
+    
+    Negative values are not allowed.
+    
+    :data:`legend_marker_height` is a :class:`kivy.properties.BoundedNumericProperty`,
+    defaults to 12 dp.
+    """
+
+    legend_marker_size = ReferenceListProperty(legend_marker_width, legend_marker_height)
+    """Maximum size of the markers in the legend.
+    
+    :data:`legend_marker_size` is a :class:`kivy.properties.ReferenceListProperty` of
+    (:data:`legend_marker_width`, :data:`legend_marker_height`) properties.
+    """
+
     _with_stencilbuffer = BooleanProperty(True)
     '''Whether :class:`Graph`'s FBO should use FrameBuffer (True) or not
     (False).
@@ -174,6 +296,8 @@ class Graph(Widget):
     '''
 
     def __init__(self, **kwargs):
+        self._legend: Union[BoxLayout, None] = None
+        self._legend_plots: Tuple[Plot] = tuple()
         super(Graph, self).__init__(**kwargs)
 
         with self.canvas:
@@ -203,6 +327,7 @@ class Graph(Widget):
         t = self._trigger = Clock.create_trigger(self._redraw_all)
         ts = self._trigger_size = Clock.create_trigger(self._redraw_size)
         tc = self._trigger_color = Clock.create_trigger(self._update_colors)
+        tl = self._trigger_legend = Clock.create_trigger(self._update_legend)
 
         self.bind(center=ts, padding=ts, precision=ts, plots=ts, x_grid=ts,
                   y_grid=ts, draw_border=ts)
@@ -211,6 +336,7 @@ class Graph(Widget):
                   y_ticks_major=t, y_ticks_minor=t, ylabel=t, y_grid_label=t,
                   font_size=t, label_options=t, x_ticks_angle=t)
         self.bind(tick_color=tc, background_color=tc, border_color=tc)
+        self.bind(legend=tl, view_pos=tl, view_size=tl, pos=tl, legend_marker_size=tl)
         self._trigger()
 
     def add_widget(self, widget):
@@ -560,6 +686,11 @@ class Graph(Widget):
         xpoints_major, xpoints_minor = self._redraw_x(*args)
         ypoints_major, ypoints_minor = self._redraw_y(*args)
 
+        if self._legend:
+            for c in self._legend.children:
+                for k, v in self.label_options.items():
+                    setattr(c, k, v)
+
         mesh = self._mesh_ticks
         n_points = (len(xpoints_major) + len(xpoints_minor) +
                     len(ypoints_major) + len(ypoints_minor))
@@ -672,6 +803,26 @@ class Graph(Widget):
         self._background_rect.size = self.size
         self._update_ticks(size)
         self._update_plots(size)
+
+    def _update_legend(self, *_):
+        if self.legend:
+            self.legend.size = self.legend.minimum_size
+            pos, size = self.view_pos, self.view_size
+            ph = self.legend.pos_hint
+            if 'x' in ph or 'center_x' in ph or 'right' in ph:
+                x = size[0] * (ph.get('x', ph.get('center_x', ph.get('right')))) \
+                    - (self.legend.width * (0 if 'x' in ph else .5 if 'center_x' in ph else 1)) \
+                    - (self.padding * (-1 if 'x' in ph else 0 if 'center_x' in ph else 1))
+                self.legend.x = self.x + pos[0] + x
+            if 'y' in ph or 'center_y' in ph or 'top' in ph:
+                y = size[1] * (ph.get('y', ph.get('center_y', ph.get('top')))) \
+                    - (self.legend.height * (0 if 'y' in ph else .5 if 'center_y' in ph else 1)) \
+                    - (self.padding * (-1 if 'y' in ph else 0 if 'center_y' in ph else 1))
+                self.legend.y = self.y + pos[1] + y
+            for i, plot in enumerate(self._legend_plots):
+                label = self.legend.children[-(i+1)]
+                drawing_center = label.x - self.legend.spacing - self.legend_marker_width / 2, label.center_y
+                plot.draw_legend(drawing_center, self.legend_marker_size)
 
     def _clear_buffer(self, *largs):
         fbo = self._fbo
@@ -1141,11 +1292,21 @@ class Plot(EventDispatcher):
         '''
         pass
 
+    def create_legend_drawings(self):
+        '''called when a legend is added containing this plot. return drawing instructions.
+        '''
+        return []
+
     def draw(self, *largs):
         '''draw the plot according to the params. It dispatches on_clear_plot
         so derived classes should call super before updating.
         '''
         self.dispatch('on_clear_plot')
+
+    def draw_legend(self, center, maximum_size):
+        '''draw the legend representation.
+        '''
+        pass
 
     def iterate_points(self):
         '''Iterate on all the points adjusted to the graph settings
@@ -1171,6 +1332,9 @@ class MeshLinePlot(Plot):
     def _set_mode(self, value):
         if hasattr(self, '_mesh'):
             self._mesh.mode = value
+        if hasattr(self, '_mesh_legend'):
+            self._mesh_legend.mode = value
+            self.draw_legend()
 
     mode = AliasProperty(lambda self: self._mesh.mode, _set_mode)
     '''VBO Mode used for drawing the points. Can be one of: 'points',
@@ -1186,6 +1350,23 @@ class MeshLinePlot(Plot):
         self.bind(
             color=lambda instr, value: setattr(self._color, "rgba", value))
         return [self._color, self._mesh]
+
+    def create_legend_drawings(self):
+        self._mesh_legend = Mesh(mode=self.mode)
+        return [self._color, self._mesh_legend]
+
+    def draw_legend(self, center=None, maximum_size=None):
+        self._legend_center = center = center or self._legend_center
+        self._legend_maximum_size = maximum_size = maximum_size or self._legend_maximum_size
+        x, right = center[0] - .5 * maximum_size[0], center[0] + .5 * maximum_size[0]
+        y, top = center[1] - .5 * maximum_size[1], center[1] + .5 * maximum_size[1]
+        self._mesh_legend.vertices = \
+            [x, center[1], 0, 0, right, center[1], 0, 0] if self.mode == 'line_strip' else \
+            [x, y, 0, 0, x, top, 0, 0, right, top, 0, 0, right, y, 0, 0,
+             center[0], center[1], 0, 0] if self.mode == "points" else \
+            [x, y, 0, 0, center[0], top, 0, 0, center[0], y, 0, 0, right, top, 0, 0] if self.mode == "lines" else \
+            [x, y, 0, 0, center[0], top, 0, 0, right, y, 0, 0]
+        self._mesh_legend.indices = tuple(range(len(self._mesh_legend.vertices) // 4))
 
     def draw(self, *args):
         super(MeshLinePlot, self).draw(*args)
@@ -1259,9 +1440,29 @@ class LinePlot(Plot):
             points += [x, y]
         self._gline.points = points
 
+    def create_legend_drawings(self):
+        from kivy.graphics import Line, RenderContext
+
+        self._grc_legend = RenderContext(
+                use_parent_modelview=True,
+                use_parent_projection=True)
+        self._grc_legend.add(self._gcolor)
+        with self._grc_legend:
+            self._gline_legend = Line(
+                points=[], cap='none', joint='round')
+        return [self._grc_legend]
+
+    def draw_legend(self, center, maximum_size):
+        self._maximum_legend_line_width = maximum_size[1] / 2
+        self._gline_legend.points = [center[0] - .5 * maximum_size[0], center[1],
+                                     center[0] + .5 * maximum_size[0], center[1]]
+        self._gline_legend.width = min(self.line_width, self._maximum_legend_line_width)
+
     def on_line_width(self, *largs):
         if hasattr(self, "_gline"):
             self._gline.width = self.line_width
+        if hasattr(self, "_gline_legend"):
+            self._gline_legend.width = min(self.line_width, self._maximum_legend_line_width)
 
 
 class SmoothLinePlot(Plot):
@@ -1327,6 +1528,13 @@ class SmoothLinePlot(Plot):
         for x, y in self.iterate_points():
             points += [x, y]
         self._gline.points = points
+
+    def create_legend_drawings(self):
+        return LinePlot.create_legend_drawings(self)
+
+    def draw_legend(self, center, maximum_size):
+        self.line_width = self._gline.width
+        return LinePlot.draw_legend(self, center, maximum_size)
 
 
 class ContourPlot(Plot):
@@ -1404,6 +1612,7 @@ class BarPlot(Plot):
     def __init__(self, *ar, **kw):
         super(BarPlot, self).__init__(*ar, **kw)
         self.bind(bar_width=self.ask_draw)
+        self.bind(bar_width=lambda *_: self.draw_legend())
         self.bind(points=self.update_bar_width)
         self.bind(graph=self.update_bar_width)
 
@@ -1433,6 +1642,26 @@ class BarPlot(Plot):
         self.bind(
             color=lambda instr, value: setattr(self._color, 'rgba', value))
         return [self._color, self._mesh]
+
+    def create_legend_drawings(self):
+        self._rectangle = Rectangle()
+        return [self._color, self._rectangle]
+
+    def draw_legend(self, center=None, maximum_size=None):
+        if not hasattr(self, "_rectangle"):
+            return
+        self._legend_maximum_size = maximum_size = maximum_size or self._legend_maximum_size
+        width = min(self.bar_width, maximum_size[0]) if self.bar_width >= 0 else maximum_size[0]
+        height = maximum_size[1]
+        if center:
+            x = center[0] - width / 2
+            y = center[1] - height / 2
+        else:
+            y = self._rectangle.pos[1]
+            x = self._rectangle.pos[0] - width / 2 + self._rectangle.size[0] / 2
+        self._rectangle.pos = x, y
+        self._rectangle.size = width, height
+
 
     def draw(self, *args):
         super(BarPlot, self).draw(*args)
@@ -1582,14 +1811,33 @@ class ScatterPlot(Plot):
 
         return [self._points_context]
 
+    def create_legend_drawings(self):
+        from kivy.graphics import Point, RenderContext
+
+        self._points_legend_context = RenderContext(
+                use_parent_modelview=True,
+                use_parent_projection=True)
+        self._points_legend_context.add(self._gcolor)
+        with self._points_legend_context:
+            self._gpts_legend = Point(points=[])
+
+        return [self._points_legend_context]
+
     def draw(self, *args):
         super(ScatterPlot, self).draw(*args)
         # flatten the list
         self._gpts.points = list(chain(*self.iterate_points()))
 
+    def draw_legend(self, center, maximum_size):
+        self._maximum_legend_point_size = min(maximum_size) / 2
+        self._gpts_legend.pointsize = min(self._maximum_legend_point_size, self.point_size)
+        self._gpts_legend.points = center
+
     def on_point_size(self, *largs):
         if hasattr(self, "_gpts"):
             self._gpts.pointsize = self.point_size
+        if hasattr(self, "_maximum_legend_point_size"):
+            self._gpts_legend.pointsize = min(self.point_size, self._maximum_legend_point_size)
 
 
 class PointPlot(Plot):
@@ -1611,6 +1859,8 @@ class PointPlot(Plot):
         def update_size(*largs):
             if self._point:
                 self._point.pointsize = self.point_size
+            if hasattr(self, "_maximum_legend_point_size"):
+                self._point_legend.pointsize = min(self.point_size, self._maximum_legend_point_size)
         self.fbind('point_size', update_size)
 
         def update_color(*largs):
@@ -1623,9 +1873,18 @@ class PointPlot(Plot):
         self._point = Point(pointsize=self.point_size)
         return [self._color, self._point]
 
+    def create_legend_drawings(self):
+        self._point_legend = Point()
+        return [self._color, self._point_legend]
+
     def draw(self, *args):
         super(PointPlot, self).draw(*args)
         self._point.points = [v for p in self.iterate_points() for v in p]
+
+    def draw_legend(self, center, maximum_size):
+        self._maximum_legend_point_size = min(maximum_size) / 2
+        self._point_legend.pointsize = min(self._maximum_legend_point_size, self.point_size)
+        self._point_legend.points = center
 
 
 if __name__ == '__main__':

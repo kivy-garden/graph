@@ -254,8 +254,8 @@ class Graph(Widget):
 
     def _set_legend(self, legend: Union[Tuple[str, Any], None]):
         if legend and self._legend:
-            for w in self._legend.children:
-                self._legend.remove_widget(w)
+            while self._legend.children:
+                self._legend.remove_widget(self.legend.children[0])
         elif legend:
             self._legend = GraphLegend()
             self._legend.bind(pos=self._trigger_legend, size=self._trigger_legend, pos_hint=self._trigger_legend,

@@ -53,11 +53,12 @@ The current availables plots are:
 __all__ = ('Graph', 'Plot', 'MeshLinePlot', 'MeshStemPlot', 'LinePlot',
            'SmoothLinePlot', 'ContourPlot', 'ScatterPlot', 'PointPlot')
 
-from typing import Tuple, Any, Union
+from typing import Tuple, Any, Union, Optional, List
 
 from kivy.metrics import dp
 from kivy.uix.widget import Widget
 from kivy.uix.label import Label
+from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.stencilview import StencilView
 from kivy.properties import NumericProperty, BooleanProperty, \
     BoundedNumericProperty, StringProperty, ListProperty, ObjectProperty, \
@@ -118,6 +119,91 @@ class YAxis(Axis):
     pass
 
 
+Builder.load_string("""
+<GraphLegend>:
+    orientation: "vertical"
+    pos_hint: {"top": 1, "right": 1}
+    size: self.minimum_size
+    spacing: self.parent.padding if self.parent else 0
+    padding: (self.parent.padding * 2 + self.marker_width, \
+        self.parent.padding, self.parent.padding, self.parent.padding) \
+        if self.parent else (0, 0, 0, 0)
+    canvas.before:
+        Color:
+            rgba: self.parent.background_color if self.parent else (0, 0, 0, 0)
+        Rectangle:
+            size: self.size
+            pos: self.pos
+        Color:
+            rgba: self.parent.border_color if self.parent else (0, 0, 0, 0)
+        Line:
+            rectangle: self.pos + self.size
+""")
+
+
+class GraphLegend(BoxLayout):
+    """The Legend of a Graph.
+
+    Set the legend's pos_hint property to position it relative to the graph's
+    plotting area. Here, the graph's padding property is taken into account. So, for example
+    a value of {'top': 1, 'right': 1} (the default) will position the legend in the
+    top right corner inside the plotting area with a distance set by the graph's padding
+    property's value to the plotting area's edges.
+    Note: The position of the window has no influence to the graph's size.
+        Meaning, setting the legend's pos_hint property to {'x': 1, 'center_y': .5}
+        will position the legend vertically centered to the right of the plotting
+        area. But this will probably be outside of the graph widget's area, so the
+        legend might lie outside of the screen or under another widget.
+
+    Example:
+
+        >>> legend = []
+        >>> graph = Graph(xmin=0, xmax=10, ymin=-1, ymax=1)
+        >>> plot = LinePlot(color=[1, 0, 0, 1])
+        >>> plot.points = [(x / 10, sin(x / 10)) for x in range(-0, 101)]
+        >>> graph.add_plot(plot)
+        >>> legend.append(('sine', plot))
+        >>> plot = LinePlot(color=[0, 1, 0, 1])
+        >>> plot.points = [(x / 10, cos(x / 10)) for x in range(-0, 101)]
+        >>> graph.add_plot(plot)
+        >>> legend.append(('cosine', plot))
+        >>> graph.legend = legend
+        >>> graph.legend.pos_hint = {'top': 1, 'center_x': .5}
+    """
+
+    marker_width = BoundedNumericProperty(dp(20), min=0)
+    """Maximum width of the markers in the legend.
+    
+    Each marker displayed in the legend is of the same size as the plot's markers,
+    but with this value as a maximum width. For line plots, this will be the length of the
+    line displayed in the legend.
+    
+    Negative values are not allowed. 
+    
+    :data:`marker_width` is a :class:`kivy.properties.BoundedNumericProperty`,
+    defaults to 20 dp.
+    """
+
+    marker_height = BoundedNumericProperty(dp(12), min=0)
+    """Maximum height of the markers in the legend.
+    
+    Each marker displayed in the legend is of the same size as the plot's markers,
+    but with this value as a maximum height.
+    
+    Negative values are not allowed.
+    
+    :data:`marker_height` is a :class:`kivy.properties.BoundedNumericProperty`,
+    defaults to 12 dp.
+    """
+
+    marker_size = ReferenceListProperty(marker_width, marker_height)
+    """Maximum size of the markers in the legend.
+    
+    :data:`marker_size` is a :class:`kivy.properties.ReferenceListProperty` of
+    (:data:`marker_width`, :data:`marker_height`) properties.
+    """
+
+
 class Graph(Widget):
     '''Graph class, see module documentation for more information.
     '''
@@ -171,26 +257,9 @@ class Graph(Widget):
             for w in self._legend.children:
                 self._legend.remove_widget(w)
         elif legend:
-            self._legend = Builder.load_string("""BoxLayout:
-    orientation: "vertical"
-    pos_hint: {"top": 1, "right": 1}
-    size: self.minimum_size
-    spacing: self.parent.padding if self.parent else 0
-    padding: (self.parent.padding * 2 + self.parent.legend_marker_width, \
-        self.parent.padding, self.parent.padding, self.parent.padding) \
-        if self.parent else (0, 0, 0, 0)
-    canvas.before:
-        Color:
-            rgba: self.parent.background_color if self.parent else (0, 0, 0, 0)
-        Rectangle:
-            size: self.size
-            pos: self.pos
-        Color:
-            rgba: self.parent.border_color if self.parent else (0, 0, 0, 0)
-        Line:
-            rectangle: self.pos + self.size
-""")
-            self._legend.bind(pos=self._trigger_legend, size=self._trigger_legend, pos_hint=self._trigger_legend)
+            self._legend = GraphLegend()
+            self._legend.bind(pos=self._trigger_legend, size=self._trigger_legend, pos_hint=self._trigger_legend,
+                              marker_size=self._trigger_legend)
             self.add_widget(self._legend)
         elif self._legend:
             self.remove_widget(self._legend)
@@ -213,73 +282,17 @@ class Graph(Widget):
             self._legend.add_widget(label)
         return True
 
-    legend = AliasProperty(_get_legend, _set_legend)
+    legend: Union[List[Tuple[str, Any]], GraphLegend] = AliasProperty(_get_legend, _set_legend)
     """Legend of graph's plots.
     
     You set the legend with an iterable yielding tuples containing the name
     and :class:`Plot` instance, you want to be displayed.
-    Getting the legend returns an instance of :class:`kivy.uix.boxlayout.BoxLayout`.
+    Getting the legend returns an instance of :class:`GraphLegend`.
     
-    Set the legend's pos_hint property to position it relative to the graph's
-    plotting area. Here, the :data:`padding` is taken into account. So, for example
-    a value of {'top': 1, 'right': 1} (the default) will position the legend in the
-    top right corner inside the plotting area with a distance of :data:`padding` to the
-    plotting area's edges.
-    Note: The position of the window has no influence to the graph's size.
-        Meaning, setting the legend's pos_hint property to {'x': 1, 'center_y': .5}
-        will position the legend vertically centered to the right of the plotting
-        area. But this will probably be outside of the graph widget's area, so the
-        legend might lie outside of the screen or under another widget.
-    
-    Example:
-
-        >>> legend = []
-        >>> graph = Graph(xmin=0, xmax=10, ymin=-1, ymax=1)
-        >>> plot = LinePlot(color=[1, 0, 0, 1])
-        >>> plot.points = [(x / 10, sin(x / 10)) for x in range(-0, 101)]
-        >>> graph.add_plot(plot)
-        >>> legend.append(('sine', plot))
-        >>> plot = LinePlot(color=[0, 1, 0, 1])
-        >>> plot.points = [(x / 10, cos(x / 10)) for x in range(-0, 101)]
-        >>> graph.add_plot(plot)
-        >>> legend.append(('cosine', plot))
-        >>> graph.legend = legend
-        >>> graph.legend.pos_hint = {'top': 1, 'center_x': .5}
+    See the :class:`GraphLegend` class documentation for a usage example.
     
     :data:`legend` is a :class:`~kivy.properties.AliasProperty`,
     defaults to None.
-    """
-
-    legend_marker_width = BoundedNumericProperty(dp(20), min=0)
-    """Maximum width of the markers in the legend.
-    
-    Each marker displayed in the legend is of the same size as the plot's markers,
-    but with this value as a maximum width. For line plots, this will be the length of the
-    line displayed in the legend.
-    
-    Negative values are not allowed. 
-    
-    :data:`legend_marker_width` is a :class:`kivy.properties.BoundedNumericProperty`,
-    defaults to 20 dp.
-    """
-
-    legend_marker_height = BoundedNumericProperty(dp(12), min=0)
-    """Maximum height of the markers in the legend.
-    
-    Each marker displayed in the legend is of the same size as the plot's markers,
-    but with this value as a maximum height.
-    
-    Negative values are not allowed.
-    
-    :data:`legend_marker_height` is a :class:`kivy.properties.BoundedNumericProperty`,
-    defaults to 12 dp.
-    """
-
-    legend_marker_size = ReferenceListProperty(legend_marker_width, legend_marker_height)
-    """Maximum size of the markers in the legend.
-    
-    :data:`legend_marker_size` is a :class:`kivy.properties.ReferenceListProperty` of
-    (:data:`legend_marker_width`, :data:`legend_marker_height`) properties.
     """
 
     _with_stencilbuffer = BooleanProperty(True)
@@ -296,8 +309,8 @@ class Graph(Widget):
     '''
 
     def __init__(self, **kwargs):
-        self._legend: Union[BoxLayout, None] = None
-        self._legend_plots: Tuple[Plot] = tuple()
+        self._legend: Optional[GraphLegend] = None
+        self._legend_plots: Tuple[Plot, ...] = tuple()
         super(Graph, self).__init__(**kwargs)
 
         with self.canvas:
@@ -336,7 +349,7 @@ class Graph(Widget):
                   y_ticks_major=t, y_ticks_minor=t, ylabel=t, y_grid_label=t,
                   font_size=t, label_options=t, x_ticks_angle=t)
         self.bind(tick_color=tc, background_color=tc, border_color=tc)
-        self.bind(legend=tl, view_pos=tl, view_size=tl, pos=tl, legend_marker_size=tl)
+        self.bind(legend=tl, view_pos=tl, view_size=tl, pos=tl)
         self._trigger()
 
     def add_widget(self, widget):
@@ -821,8 +834,8 @@ class Graph(Widget):
                 self.legend.y = self.y + pos[1] + y
             for i, plot in enumerate(self._legend_plots):
                 label = self.legend.children[-(i+1)]
-                drawing_center = label.x - self.legend.spacing - self.legend_marker_width / 2, label.center_y
-                plot.draw_legend(drawing_center, self.legend_marker_size)
+                drawing_center = label.x - self.legend.spacing - self.legend.marker_width / 2, label.center_y
+                plot.draw_legend(drawing_center, self.legend.marker_size)
 
     def _clear_buffer(self, *largs):
         fbo = self._fbo

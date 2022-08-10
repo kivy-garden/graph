@@ -794,11 +794,12 @@ class Graph(Widget):
 
     unit = NumericProperty(1)
     '''Determines the unit of x-axis values. The distance between the major
-    tick marks is divided by this number. Settings this to 0 will work as
-    if it was set to 0, to avoid division by 0. Negative numbers are allowed.
+    tick marks is divided by this number. Setting this to 0 will work as
+    if it was set to 0 to avoid division by 0. Negative numbers are allowed.
 
-    For examaple, setting this and x_ticks_major to be 60 will display x-values
-    in minutes (by dividing major ticks by 60).
+    For example, setting this and x_ticks_major to 60 will display x-axis ticks
+    in minutes (by dividing major ticks by 60), assuming that data rate is once
+    per second.
 
     :data:`unit` is a :class:`~kivy.properties.NumericProperty`, defaults
     to 1.

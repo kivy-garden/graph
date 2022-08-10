@@ -337,6 +337,7 @@ class Graph(Widget):
         ymax = self.ymax
         xmin = self.xmin
         precision = self.precision
+        unit = self.unit
         x_overlap = False
         y_overlap = False
         # set up x and y axis labels
@@ -392,19 +393,25 @@ class Graph(Widget):
             funcexp = exp10 if self.xlog else identity
             funclog = log10 if self.xlog else identity
             # find the distance from the end that'll fit the last tick label
-            xlabels[0].text = precision % funcexp(xpoints[-1])
+            xlabels[0].text = precision % (
+                funcexp(xpoints[-1]) / (unit if unit != 0 else 1) + 0
+            )
             xlabels[0].texture_update()
             xextent = x + width - xlabels[0].texture_size[0] / 2. - padding
             # find the distance from the start that'll fit the first tick label
             if not x_next:
-                xlabels[0].text = precision % funcexp(xpoints[0])
+                xlabels[0].text = precision % (
+                    funcexp(xpoints[0]) / (unit if unit != 0 else 1) + 0
+                )
                 xlabels[0].texture_update()
                 x_next = padding + xlabels[0].texture_size[0] / 2.
             xmin = funclog(xmin)
             ratio = (xextent - x_next) / float(funclog(self.xmax) - xmin)
             right = -1
             for k in range(len(xlabels)):
-                xlabels[k].text = precision % funcexp(xpoints[k])
+                xlabels[k].text = precision % (
+                    funcexp(xpoints[k]) / (unit if unit != 0 else 1) + 0
+                )
                 # update the size so we can center the labels on ticks
                 xlabels[k].texture_update()
                 xlabels[k].size = xlabels[k].texture_size
@@ -783,6 +790,19 @@ class Graph(Widget):
 
     :data:`xlog` is a :class:`~kivy.properties.BooleanProperty`, defaults
     to False.
+    '''
+
+    unit = NumericProperty(1)
+    '''Determines the unit of x-axis values. The distance between the major
+    tick marks is divided by this number. Setting this to 0 will work as
+    if it was set to 0 to avoid division by 0. Negative numbers are allowed.
+
+    For example, setting this and x_ticks_major to 60 will display x-axis ticks
+    in minutes (by dividing major ticks by 60), assuming that data rate is once
+    per second.
+
+    :data:`unit` is a :class:`~kivy.properties.NumericProperty`, defaults
+    to 1.
     '''
 
     x_ticks_major = BoundedNumericProperty(0, min=0)
